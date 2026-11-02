@@ -47,6 +47,7 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--ln);text-align:right;white-s
 @keyframes bob{to{transform:translateY(-8px)}}@keyframes up{from{opacity:0;transform:translateY(8px)}}
 #skip{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:16px;background:none;border:0;color:#fff;font-size:15px;cursor:pointer}
 #buyer>*{animation:up .3s both}
+textarea{background:var(--bg);border:1px solid var(--ln);border-radius:10px;padding:9px;width:100%;font:inherit;color:var(--tx);resize:vertical}
 a.btn{display:inline-block;color:var(--tx);text-decoration:none;text-align:center}
 .ph{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:12px;margin-top:8px;background:var(--bg)}
 </style></head><body><main>
@@ -90,10 +91,30 @@ let db=null,user=null,store={mode:'auto',open:'08:00',close:'21:00',name:'Softdr
 let bc={},kc={},bname='',bnote='',bmeth='cash',kname='',kmeth='cash',kpaid=true,rdate=ymd(new Date()),msg='';
 const today=()=>ymd(new Date());const un=k=>(store.units&&store.units[k-1])||'Unit '+k,uname=c=>c==='Toko'?'Toko':un(+c.slice(5));
 function isOpen(){if(store.mode==='buka')return true;if(store.mode==='tutup')return false;const n=new Date(),t=pad(n.getHours())+':'+pad(n.getMinutes());return store.open<=store.close?(t>=store.open&&t<store.close):(t>=store.open||t<store.close)}
-function paintStatus(){const o=isOpen(),e=$('#stat');e.textContent=o?'● BUKA · tutup '+store.close:'● TUTUP · buka '+store.open;e.className='badge '+(o?'open':'closed');$('#shop').textContent='🥤 '+(store.name||'Softdrink')}
+function paintStatus(){const o=isOpen(),e=$('#stat');e.textContent=o?'● BUKA · tutup '+store.close:'● TUTUP · buka '+store.open;e.className='badge '+(o?'open':'closed');$('#shop').innerHTML=(tema.logo?`<img src="${tema.logo}" alt="" style="width:30px;height:30px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px">`:'🥤 ')+esc(store.name||'Softdrink')}
 setInterval(()=>{paintStatus();if(!$('#buyer').hidden)buyerUI()},30000);
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));$('#buyer').hidden=b.dataset.t!=='buyer';$('#nav').hidden=b.dataset.t!=='buyer';$('#kasir').hidden=b.dataset.t!=='kasir';b.dataset.t==='kasir'?kasirGate():buyerUI()});
 
+/* ---------- TAMPILAN & PROFIL TOKO ---------- */
+let tema={wall:'',logo:'',mode:'hero'};
+const shr1=(f,m,q)=>new Promise((ok,no)=>{const i=new Image(),u=URL.createObjectURL(f);i.onload=()=>{const k=Math.min(1,m/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',q))};i.onerror=()=>{URL.revokeObjectURL(u);no(new Error('img'))};i.src=u});
+async function shr(f,m,q){let o;for(const [a,b] of [[m,q],[m*.75,q-.1],[m*.55,q-.2]]){o=await shr1(f,a,b);if(o.length<700000)return o}return o}
+function applyTema(){const b=document.body.style;
+ if(tema.wall&&tema.mode==='full'){const o='color-mix(in srgb,var(--bg) 86%,transparent)';b.backgroundImage=`linear-gradient(${o},${o}),url("${tema.wall}")`;b.backgroundSize='cover';b.backgroundPosition='center';b.backgroundAttachment='fixed'}
+ else b.backgroundImage=''}
+function profUI(){
+ $('#kb').innerHTML=`<div class="card"><h2>🖼️ Foto profil toko</h2><div class="row" style="align-items:center"><div style="flex:0 0 auto;min-width:0">${tema.logo?`<img src="${tema.logo}" alt="Foto profil" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid var(--ln)">`:'<div style="font-size:44px">🏪</div>'}</div><div><input type="file" id="lf" accept="image/*">${tema.logo?'<p><button class="btn sm" id="ld">Hapus foto profil</button></p>':''}</div></div><p class="mut">Tampil di pojok atas dan di halaman Profil pembeli.</p></div>
+ <div class="card"><h2>🌄 Wallpaper beranda</h2>${tema.wall?`<img class="ph" src="${tema.wall}" alt="Wallpaper" style="max-height:180px">`:'<p class="mut">Belum ada wallpaper. Pilih foto toko Anda.</p>'}<input type="file" id="wf" accept="image/*" style="margin-top:8px"><div class="row" style="margin-top:8px"><select id="wm"><option value="hero">Tampil di kartu beranda saja</option><option value="full">Jadi latar seluruh halaman</option></select>${tema.wall?'<button class="btn sm" id="wd">Hapus wallpaper</button>':''}</div><p class="mut">Pakai foto mendatar (landscape) supaya hasilnya bagus. Foto otomatis dikecilkan agar ringan.</p></div>
+ <div class="card"><h2>📝 Profil toko</h2><div style="display:grid;gap:8px"><input id="pn" placeholder="Nama toko" value="${esc(store.name)}"><input id="pt" placeholder="Slogan (contoh: Segar setiap tegukan.)" value="${esc(store.tagline)}"><textarea id="pd" rows="3" placeholder="Deskripsi singkat toko">${esc(store.desc)}</textarea><input id="pa" placeholder="Alamat toko" value="${esc(store.addr)}"><input id="pw" type="tel" inputmode="tel" placeholder="No. WA toko (0812…)" value="${esc(store.wa)}"><button class="btn pr" id="pv">Simpan profil</button></div></div>`;
+ const sv=d=>db.doc('config/tampilan').set({...tema,...d});
+ $('#wm').value=tema.mode||'hero';
+ $('#lf').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await sv({logo:await shr(f,320,.85)});profUI()}catch(x){alert('Foto gagal disimpan, coba foto lain.')}};
+ $('#wf').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await sv({wall:await shr(f,1280,.75)});profUI()}catch(x){alert('Wallpaper gagal disimpan, coba foto lain.')}};
+ $('#wm').onchange=e=>sv({mode:e.target.value});
+ const ld=$('#ld');if(ld)ld.onclick=async()=>{await sv({logo:''});profUI()};
+ const wd=$('#wd');if(wd)wd.onclick=async()=>{await sv({wall:''});profUI()};
+ $('#pv').onclick=async()=>{const w=$('#pw').value.trim();if(w&&wanum(w).length<10)return alert('Nomor WA toko tidak valid.');
+  await db.doc('config/store').set({...store,name:$('#pn').value.trim()||'Softdrink',tagline:$('#pt').value.trim(),desc:$('#pd').value.trim(),addr:$('#pa').value.trim(),wa:w});alert('Profil toko tersimpan.');profUI()}}
 /* ---------- SUARA PESANAN MASUK ---------- */
 let ac=null,firstOrd=true;
 const AC=window.AudioContext||window.webkitAudioContext;
@@ -177,7 +198,7 @@ function buyerUI(){
  const qr=store.qris?`<div style="margin-top:10px;text-align:center"><div class="mut">QRIS Toko – scan untuk membayar</div><img src="${store.qris}" alt="QRIS toko" style="max-width:240px;width:100%;border-radius:12px"></div>`:'';
  let h='';
  if(bpage==='home'){const od=orders.filter(x=>x.date===today()).length;
-  h=`<section class="hero"><span class="badge">🥤 ${esc(store.name)}</span><div class="ht">Segar setiap tegukan.</div><p>Minuman dingin, nasi &amp; batagor titipan. Pesan dari HP-mu, ambil di toko — tanpa antre.</p><button class="hb" data-go="menu">Lihat Menu</button><button class="hb g" data-go="profil">Tentang Toko</button><div class="emo">🥤🧊🥤🧊🥤</div></section>
+  h=`<section class="hero"${tema.wall?` style="background:linear-gradient(180deg,rgba(0,0,0,.2),rgba(0,0,0,.72)),url('${tema.wall}') center/cover;min-height:240px"`:''}><span class="badge">🥤 ${esc(store.name)}</span><div class="ht">${esc(store.tagline||'Segar setiap tegukan.')}</div><p>${esc(store.desc||'Minuman dingin, nasi & batagor titipan. Pesan dari HP-mu, ambil di toko — tanpa antre.')}</p><button class="hb" data-go="menu">Lihat Menu</button><button class="hb g" data-go="profil">Tentang Toko</button><div class="emo">🥤🧊🥤🧊🥤</div></section>
   ${ban}<div class="card"><h2>✍️ Pesan Cepat</h2><p class="mut">Ketik pesananmu, misalnya “cola 2, batagor 1”.</p><div class="row"><input id="qo" placeholder="cola 2, batagor 1"><button class="btn pr" id="qb">Proses Pesanan</button></div><p class="mut">${esc(qmsg)}</p></div>
   <div class="grid" style="margin-bottom:12px"><div class="stat"><span class="mut">Pesanan hari ini</span><b>${od}</b></div><div class="stat"><span class="mut">Pilihan menu</span><b>${L.length}</b></div><div class="stat"><span class="mut">Status</span><b class="${o?'good':'debt'}">${o?'Buka':'Tutup'}</b></div><div class="stat"><span class="mut">Jam toko</span><b>${store.open}–${store.close}</b></div></div>
   <div class="card soon"><span class="badge">✨ Segera Hadir</span><h2 style="margin-top:8px">Kumpulkan Poin, Tukar Hadiah!</h2><p class="mut">Sebentar lagi setiap pesananmu menghasilkan poin yang bisa ditukar menu gratis. Nantikan ya! 🎁</p></div>`}
@@ -185,7 +206,7 @@ function buyerUI(){
  else if(bpage==='cart'){const ci=L.filter(m=>bc[m.id]);
   h=`<div class="card"><h2>🛒 Keranjang</h2>${ci.map(m=>`<div class="item"><div>${emo(m.n)} ${esc(m.n)}<div class="mut">${rp(m.p)} × ${bc[m.id]}</div></div>${stp(m,bc)}</div>`).join('')||'<p class="mut">Keranjang masih kosong.</p><button class="btn pr" data-go="menu">Pilih Menu</button>'}<p class="mut">${esc(msg)}</p></div>`;
   if(ci.length)h+=form+`<div class="card"><div class="row"><select id="bm"><option value="cash" ${bmeth==='cash'?'selected':''}>Bayar Cash</option><option value="qris" ${bmeth==='qris'?'selected':''}>Bayar QRIS</option></select></div>${qr}<div style="margin-top:10px"><label class="mut">Upload bukti pembayaran QRIS (opsional)</label><input type="file" id="bf" accept="image/*"><div class="mut">${proofFile?'📎 '+esc(proofFile.name):''}</div></div><p><b>Total: ${rp(cartTotal(bc))}</b></p><button class="btn pr" id="bgo" ${o?'':'disabled'}>Pesan Sekarang</button></div>`}
- else{h=`<div class="card"><h2>🏪 ${esc(store.name)}</h2><p class="mut">Jam buka ${store.open}–${store.close} · ${o?'Sedang BUKA':'Sedang TUTUP'}</p><p class="mut">Pesan lewat HP, lalu ambil dan bayar di toko (cash atau QRIS).</p></div>${form}${store.qris?`<div class="card" style="text-align:center"><h2>QRIS Toko</h2><img src="${store.qris}" alt="QRIS toko" style="max-width:240px;width:100%;border-radius:12px"></div>`:''}`}
+ else{h=`<div class="card" style="text-align:center">${tema.logo?`<img src="${tema.logo}" alt="Logo toko" style="width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--ln)">`:'<div style="font-size:48px">🏪</div>'}<h2 style="margin-top:8px">${esc(store.name)}</h2>${store.tagline?`<p class="mut">${esc(store.tagline)}</p>`:''}${store.desc?`<p>${esc(store.desc)}</p>`:''}<p class="mut">Jam buka ${store.open}–${store.close} · ${o?'Sedang BUKA':'Sedang TUTUP'}</p>${store.addr?`<p class="mut">📍 ${esc(store.addr)}</p>`:''}${wanum(store.wa)?`<p><a class="btn pr" target="_blank" rel="noopener" href="https://wa.me/${wanum(store.wa)}">💬 Chat WhatsApp Toko</a></p>`:''}<p class="mut">Pesan lewat HP, lalu ambil dan bayar di toko (cash atau QRIS).</p></div>${form}${store.qris?`<div class="card" style="text-align:center"><h2>QRIS Toko</h2><img src="${store.qris}" alt="QRIS toko" style="max-width:240px;width:100%;border-radius:12px"></div>`:''}`}
  el.innerHTML=h;bindB()}
 function bindB(){const el=$('#buyer'),on=(s,k,f)=>{const e=$(s);if(e)e[k]=f};
  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
@@ -213,12 +234,12 @@ function startKasir(){
   db.doc('config/santri').onSnapshot(s=>{santri=s.exists?(s.data().items||[]):[];if(sub==='pay'&&!$('#kasir').hidden&&document.activeElement===document.body)payUI()})}
  kasirUI()}
 function kasirUI(){
- $('#kasir').innerHTML=`<div class="row" style="margin-bottom:8px"><button class="btn sm ${sndOn?'pr':''}" id="snd">${sndOn?'🔔 Suara pesanan: ON':'🔕 Suara pesanan: OFF'}</button><button class="btn sm" id="sndt">Tes suara</button></div><div class="sub">${[['sale','Kasir & Pesanan'],['stk','Setoran Hari Ini'],['rep','Laporan'],['pay','📸 Paylater'],['set','Menu & Pengaturan']].map(([k,l])=>`<button class="btn ${sub===k?'pr':''}" data-s="${k}">${l}</button>`).join('')}<button class="btn" id="lock" style="margin-left:auto">Kunci</button></div><div id="kb"></div>`;
+ $('#kasir').innerHTML=`<div class="row" style="margin-bottom:8px"><button class="btn sm ${sndOn?'pr':''}" id="snd">${sndOn?'🔔 Suara pesanan: ON':'🔕 Suara pesanan: OFF'}</button><button class="btn sm" id="sndt">Tes suara</button></div><div class="sub">${[['sale','Kasir & Pesanan'],['stk','Setoran Hari Ini'],['rep','Laporan'],['pay','📸 Paylater'],['prof','🎨 Profil & Tampilan'],['set','Menu & Pengaturan']].map(([k,l])=>`<button class="btn ${sub===k?'pr':''}" data-s="${k}">${l}</button>`).join('')}<button class="btn" id="lock" style="margin-left:auto">Kunci</button></div><div id="kb"></div>`;
  $('#kasir').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{sub=b.dataset.s;kasirUI()});
  $('#snd').onclick=()=>{sndOn=!sndOn;try{localStorage.setItem('snd',sndOn?'1':'0')}catch(e){}if(sndOn)beep(true);kasirUI()};
  $('#sndt').onclick=()=>beep(true);
  $('#lock').onclick=()=>{try{sessionStorage.removeItem('pk')}catch(e){}location.reload()};
- if(sub==='sale')saleUI();if(sub==='stk')stkUI();if(sub==='set')setUI();if(sub==='pay')payUI();kasirParts()}
+ if(sub==='sale')saleUI();if(sub==='stk')stkUI();if(sub==='set')setUI();if(sub==='pay')payUI();if(sub==='prof')profUI();kasirParts()}
 function kasirParts(){if($('#kasir').hidden||!unlocked)return;if(sub==='sale')listUI();else if(sub==='rep')repUI();else if(sub==='stk')stkSt();else if(sub==='pay')payList()}
 function stkUI(){
  $('#kb').innerHTML=`<div class="card"><h2>Setoran hari ini (${today()})</h2><p class="mut">Isi jumlah nasi dan batagor yang disetor tiap unit beserta harganya. Stok otomatis tampil di halaman pembeli dan berkurang tiap ada pesanan.</p><div class="scroll"><table><tr><th>Unit</th><th>Nasi</th><th>Harga</th><th>Batagor</th><th>Harga</th></tr>${[1,2,3,4,5,6].map(k=>{const u=setor['u'+k]||{};return`<tr><td>${esc(un(k))}</td>${['nasi','pn','batagor','pb'].map(f=>`<td><input type="number" min="0" style="width:84px" data-u="u${k}" data-f="${f}" value="${u[f]??''}"></td>`).join('')}</tr>`}).join('')}</table></div><p><button class="btn pr" id="sgo">Simpan setoran</button></p></div><div id="stkst"></div>`;
@@ -269,7 +290,7 @@ function setUI(){
  <div class="card"><h2>QRIS Toko</h2>${store.qris?`<img src="${store.qris}" alt="QRIS" style="max-width:200px;border-radius:10px"><br>`:'<p class="mut">Belum ada QRIS.</p>'}<input type="file" id="qf" accept="image/*"><p class="mut">Pilih gambar QRIS toko; otomatis tampil di halaman pembeli.</p></div>`;
  $('#sm').value=store.mode;
  $('#us').onclick=async()=>{await db.doc('config/store').set({...store,units:[1,2,3,4,5,6].map(k=>$('#un'+k).value.trim()||'Unit '+k)});alert('Nama unit tersimpan.')};
- $('#ss').onclick=()=>db.doc('config/store').set({name:$('#sn').value,open:$('#so').value||'08:00',close:$('#sc').value||'21:00',mode:$('#sm').value,qris:store.qris||null});
+ $('#ss').onclick=()=>db.doc('config/store').set({...store,name:$('#sn').value,open:$('#so').value||'08:00',close:$('#sc').value||'21:00',mode:$('#sm').value,qris:store.qris||null});
  const sv=a=>db.doc('menu/main').set({items:a});
  $('#ma').onclick=()=>{const n=$('#mn').value.trim(),p=+$('#mp').value;if(!n||!p)return;sv([...menu,{id:'m'+Date.now(),n,p,cat:$('#mc').value}])};
  $('#kb').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>sv(menu.filter(m=>m.id!==b.dataset.d)));
@@ -283,6 +304,7 @@ if(FID){document.querySelector('.tabs').hidden=true;$('#nav').hidden=true;$('#bu
 buyerUI();paintStatus();
 (async()=>{try{
  user=await claude.use('user');db=await claude.use('db');if(!db){buyerUI();return}
+ db.doc('config/tampilan').onSnapshot(s=>{tema={wall:'',logo:'',mode:'hero',...(s.exists?s.data():{})};applyTema();paintStatus();buyerUI();if(unlocked&&sub==='prof'&&!$('#kasir').hidden&&document.activeElement===document.body)profUI()});
  if(FID)db.doc('foto/'+FID).get().then(s=>{fimg=s.exists?s.data().img:null;fview()}).catch(()=>{});
  db.collection('orders').onSnapshot(s=>{if(!firstOrd&&unlocked&&!FID)s.docChanges().forEach(c=>{if(c.type==='added'&&!c.doc.metadata.hasPendingWrites&&c.doc.data().src==='online'){beep();flashTitle()}});firstOrd=false;orders=s.docs.map(d=>({id:d.id,...d.data()}));buyerUI();kasirParts();if(FID)fview()},()=>{});
  db.collection('sold').onSnapshot(s=>{soldMap={};s.docs.forEach(d=>soldMap[d.id]=d.data().n||0);buyerUI();kasirParts()});let sd=today(),su=null;const subS=()=>{su&&su();sd=today();su=db.doc('setoran/'+sd).onSnapshot(s=>{setor=s.exists?s.data():{};buyerUI();if(unlocked){if(sub==='sale')saleUI();else if(sub==='stk'&&document.activeElement===document.body)stkUI();else kasirParts()}},()=>{})};subS();setInterval(()=>{if(sd!==today())subS()},60000);
