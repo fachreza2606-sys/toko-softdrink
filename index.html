@@ -98,7 +98,7 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelect
 /* ---------- TAMPILAN & PROFIL TOKO ---------- */
 let tema={wall:'',logo:'',mode:'hero'};
 const shr1=(f,m,q)=>new Promise((ok,no)=>{const i=new Image(),u=URL.createObjectURL(f);i.onload=()=>{const k=Math.min(1,m/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',q))};i.onerror=()=>{URL.revokeObjectURL(u);no(new Error('img'))};i.src=u});
-async function shr(f,m,q){let o;for(const [a,b] of [[m,q],[m*.75,q-.1],[m*.55,q-.2]]){o=await shr1(f,a,b);if(o.length<700000)return o}return o}
+async function shr(f,m,q){let o;for(const [a,b] of [[m,q],[m*.75,q-.1],[m*.55,q-.2]]){o=await shr1(f,a,b);if(o.length<450000)return o}return o}
 function applyTema(){const b=document.body.style;
  if(tema.wall&&tema.mode==='full'){const o='color-mix(in srgb,var(--bg) 86%,transparent)';b.backgroundImage=`linear-gradient(${o},${o}),url("${tema.wall}")`;b.backgroundSize='cover';b.backgroundPosition='center';b.backgroundAttachment='fixed'}
  else b.backgroundImage=''}
@@ -108,8 +108,9 @@ function profUI(){
  <div class="card"><h2>📝 Profil toko</h2><div style="display:grid;gap:8px"><input id="pn" placeholder="Nama toko" value="${esc(store.name)}"><input id="pt" placeholder="Slogan (contoh: Segar setiap tegukan.)" value="${esc(store.tagline)}"><textarea id="pd" rows="3" placeholder="Deskripsi singkat toko">${esc(store.desc)}</textarea><input id="pa" placeholder="Alamat toko" value="${esc(store.addr)}"><input id="pw" type="tel" inputmode="tel" placeholder="No. WA toko (0812…)" value="${esc(store.wa)}"><button class="btn pr" id="pv">Simpan profil</button></div></div>`;
  const sv=d=>db.doc('config/tampilan').set({...tema,...d});
  $('#wm').value=tema.mode||'hero';
- $('#lf').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await sv({logo:await shr(f,320,.85)});profUI()}catch(x){alert('Foto gagal disimpan, coba foto lain.')}};
- $('#wf').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await sv({wall:await shr(f,1280,.75)});profUI()}catch(x){alert('Wallpaper gagal disimpan, coba foto lain.')}};
+ const gagal=(a,x)=>alert(a+'\n\nDetail: '+((x&&(x.code||x.message))||x));
+ $('#lf').onchange=async e=>{const f=e.target.files[0];if(!f)return;let img;try{img=await shr(f,320,.85)}catch(x){return gagal('Foto tidak bisa dibaca. Pakai format JPG atau PNG.',x)}try{await sv({logo:img});profUI()}catch(x){gagal('Foto gagal disimpan ke database.',x)}};
+ $('#wf').onchange=async e=>{const f=e.target.files[0];if(!f)return;let img;try{img=await shr(f,1280,.75)}catch(x){return gagal('Foto tidak bisa dibaca. Pakai format JPG atau PNG.',x)}try{await sv({wall:img});profUI()}catch(x){gagal('Wallpaper gagal disimpan ke database.',x)}};
  $('#wm').onchange=e=>sv({mode:e.target.value});
  const ld=$('#ld');if(ld)ld.onclick=async()=>{await sv({logo:''});profUI()};
  const wd=$('#wd');if(wd)wd.onclick=async()=>{await sv({wall:''});profUI()};
