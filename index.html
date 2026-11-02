@@ -98,7 +98,9 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelect
 let ac=null,firstOrd=true;
 const AC=window.AudioContext||window.webkitAudioContext;
 document.addEventListener('pointerdown',()=>{try{ac=ac||new AC();if(ac.state==='suspended')ac.resume()}catch(e){}});
-function beep(){try{if(!ac)return;[0,.28,.56].forEach((t,i)=>{const o=ac.createOscillator(),g=ac.createGain(),n=ac.currentTime+t;o.frequency.value=i===1?880:1175;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(.5,n+.02);g.gain.exponentialRampToValueAtTime(.0001,n+.24);o.start(n);o.stop(n+.26)});navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
+let sndOn=true;try{sndOn=localStorage.getItem('snd')!=='0'}catch(e){}
+function beep(force){try{if(!sndOn&&!force)return;ac=ac||new AC();if(ac.state==='suspended')ac.resume();[0,.28,.56].forEach((t,k)=>{const o=ac.createOscillator(),g=ac.createGain(),n=ac.currentTime+t;o.frequency.value=k===1?880:1175;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(.6,n+.02);g.gain.exponentialRampToValueAtTime(.0001,n+.24);o.start(n);o.stop(n+.26)});navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
+function flashTitle(){const t=document.title;document.title='🔔 Pesanan baru!';setTimeout(()=>document.title=t,10000)}
 /* ---------- PAYLATER SANTRI ---------- */
 const FID=new URLSearchParams(location.search).get('foto');
 let santri=[],pc={},psid='',pimg=null,pmsg='',pres=null,pbusy=false,fimg=null;
@@ -211,8 +213,10 @@ function startKasir(){
   db.doc('config/santri').onSnapshot(s=>{santri=s.exists?(s.data().items||[]):[];if(sub==='pay'&&!$('#kasir').hidden&&document.activeElement===document.body)payUI()})}
  kasirUI()}
 function kasirUI(){
- $('#kasir').innerHTML=`<div class="sub">${[['sale','Kasir & Pesanan'],['stk','Setoran Hari Ini'],['rep','Laporan'],['pay','📸 Paylater'],['set','Menu & Pengaturan']].map(([k,l])=>`<button class="btn ${sub===k?'pr':''}" data-s="${k}">${l}</button>`).join('')}<button class="btn" id="lock" style="margin-left:auto">Kunci</button></div><div id="kb"></div>`;
+ $('#kasir').innerHTML=`<div class="row" style="margin-bottom:8px"><button class="btn sm ${sndOn?'pr':''}" id="snd">${sndOn?'🔔 Suara pesanan: ON':'🔕 Suara pesanan: OFF'}</button><button class="btn sm" id="sndt">Tes suara</button></div><div class="sub">${[['sale','Kasir & Pesanan'],['stk','Setoran Hari Ini'],['rep','Laporan'],['pay','📸 Paylater'],['set','Menu & Pengaturan']].map(([k,l])=>`<button class="btn ${sub===k?'pr':''}" data-s="${k}">${l}</button>`).join('')}<button class="btn" id="lock" style="margin-left:auto">Kunci</button></div><div id="kb"></div>`;
  $('#kasir').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{sub=b.dataset.s;kasirUI()});
+ $('#snd').onclick=()=>{sndOn=!sndOn;try{localStorage.setItem('snd',sndOn?'1':'0')}catch(e){}if(sndOn)beep(true);kasirUI()};
+ $('#sndt').onclick=()=>beep(true);
  $('#lock').onclick=()=>{try{sessionStorage.removeItem('pk')}catch(e){}location.reload()};
  if(sub==='sale')saleUI();if(sub==='stk')stkUI();if(sub==='set')setUI();if(sub==='pay')payUI();kasirParts()}
 function kasirParts(){if($('#kasir').hidden||!unlocked)return;if(sub==='sale')listUI();else if(sub==='rep')repUI();else if(sub==='stk')stkSt();else if(sub==='pay')payList()}
@@ -280,7 +284,7 @@ buyerUI();paintStatus();
 (async()=>{try{
  user=await claude.use('user');db=await claude.use('db');if(!db){buyerUI();return}
  if(FID)db.doc('foto/'+FID).get().then(s=>{fimg=s.exists?s.data().img:null;fview()}).catch(()=>{});
- db.collection('orders').onSnapshot(s=>{if(!firstOrd&&unlocked&&!FID)s.docChanges().forEach(c=>{if(c.type==='added'&&!c.doc.metadata.hasPendingWrites&&c.doc.data().src==='online')beep()});firstOrd=false;orders=s.docs.map(d=>({id:d.id,...d.data()}));buyerUI();kasirParts();if(FID)fview()},()=>{});
+ db.collection('orders').onSnapshot(s=>{if(!firstOrd&&unlocked&&!FID)s.docChanges().forEach(c=>{if(c.type==='added'&&!c.doc.metadata.hasPendingWrites&&c.doc.data().src==='online'){beep();flashTitle()}});firstOrd=false;orders=s.docs.map(d=>({id:d.id,...d.data()}));buyerUI();kasirParts();if(FID)fview()},()=>{});
  db.collection('sold').onSnapshot(s=>{soldMap={};s.docs.forEach(d=>soldMap[d.id]=d.data().n||0);buyerUI();kasirParts()});let sd=today(),su=null;const subS=()=>{su&&su();sd=today();su=db.doc('setoran/'+sd).onSnapshot(s=>{setor=s.exists?s.data():{};buyerUI();if(unlocked){if(sub==='sale')saleUI();else if(sub==='stk'&&document.activeElement===document.body)stkUI();else kasirParts()}},()=>{})};subS();setInterval(()=>{if(sd!==today())subS()},60000);
  db.doc('config/store').onSnapshot(s=>{if(s.exists)store={...store,...s.data()};paintStatus();buyerUI();if(unlocked&&sub==='set'&&document.activeElement===document.body)setUI()});
  db.doc('menu/main').onSnapshot(s=>{menu=s.exists?(s.data().items||[]):[];buyerUI();if(unlocked){if(sub==='sale')saleUI();else if(sub==='set')setUI()}});
