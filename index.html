@@ -62,7 +62,7 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getFirestore,doc,collection,getDoc,setDoc,updateDoc,deleteDoc,addDoc,onSnapshot,increment} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {initializeAuth,browserSessionPersistence,signInWithEmailAndPassword,signOut,updatePassword,sendPasswordResetEmail} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 /* ====== ISI BAGIAN INI DENGAN DATA FIREBASE ANDA (lihat PANDUAN.md) ====== */
-const CFG={apiKey:"ISI_API_KEY",authDomain:"ISI.firebaseapp.com",projectId:"ISI_PROJECT_ID",appId:"ISI_APP_ID",ownerEmail:"email-pemilik@gmail.com"};
+const CFG={apiKey:"AIzaSyDmjqdkEEFbKu7PsnI4uvCbigo83fA6WuQ",authDomain:"toko-softdrink-b4efe.firebaseapp.com",projectId:"toko-softdrink-b4efe",appId:"1:548360039845:web:b4cc9ccbbaa2e7a0f4cc4c",ownerEmail:"email-pemilik@gmail.com"};
 /* ========================================================================= */
 const app=initializeApp(CFG),fs=getFirestore(app),auth=initializeAuth(app,{persistence:[browserSessionPersistence]}),noop=()=>{};
 const wd=s=>({exists:s.exists(),data:()=>s.data()}),dr=p=>doc(fs,...p.split('/'));
