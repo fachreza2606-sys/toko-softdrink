@@ -132,11 +132,30 @@ const fotoUrl=id=>location.origin+location.pathname+'?foto='+id;
 function waLink(o){const s=santri.find(x=>x.id===o.sid),n=s?wanum(s.wa):'';
  const t="Assalamu'alaikum Bapak/Ibu, wali dari ananda "+o.name+".\n\nAnanda mengambil pesanan di "+(store.name||'Softdrink')+" (paylater):\n"+o.items.map(i=>'• '+i.n+' ×'+i.q).join('\n')+"\n\nTotal: "+rp(o.total)+"\n\nFoto pesanan dan QRIS pembayaran:\n"+fotoUrl(o.id)+"\n\nMohon dibayar lewat QRIS toko pada link di atas. Jazakumullah khairan.";
  return 'https://wa.me/'+n+'?text='+encodeURIComponent(t)}
+let camStream=null,camFace='environment';
+function camOpen(){
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert('Kamera langsung tidak tersedia di browser ini. Gunakan tombol "Pilih foto / galeri", atau buka situs lewat Chrome atau Safari (bukan dari dalam aplikasi WhatsApp/Instagram).');return}
+ const ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column';
+ ov.innerHTML='<video id="cv" autoplay playsinline muted style="flex:1;min-height:0;width:100%;object-fit:contain;background:#000"></video><p id="cm" style="color:#fff;text-align:center;margin:8px 12px;min-height:1.2em"></p><div style="display:flex;gap:10px;justify-content:center;padding:12px 12px calc(14px + env(safe-area-inset-bottom,0px));background:#111"><button class="btn" id="cx" type="button">Batal</button><button class="btn pr" id="cs" type="button">📸 Ambil foto</button><button class="btn" id="cf" type="button">🔄 Ganti kamera</button></div>';
+ document.body.appendChild(ov);
+ const v=ov.querySelector('#cv'),msg=t=>ov.querySelector('#cm').textContent=t;
+ const stop=()=>{camStream&&camStream.getTracks().forEach(t=>t.stop());camStream=null;ov.remove()};
+ const start=async()=>{camStream&&camStream.getTracks().forEach(t=>t.stop());camStream=null;msg('');
+  try{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:camFace},width:{ideal:1280},height:{ideal:960}},audio:false})}
+  catch(e){try{camStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false})}
+   catch(e2){msg(e2.name==='NotAllowedError'?'Izin kamera ditolak. Izinkan kamera untuk situs ini di pengaturan browser, lalu coba lagi.':e2.name==='NotFoundError'?'Tidak ada kamera di perangkat ini. Pakai tombol "Pilih foto / galeri".':'Kamera tidak bisa dibuka: '+(e2.message||e2.name));return}}
+  v.srcObject=camStream;try{await v.play()}catch(e){}};
+ ov.querySelector('#cx').onclick=stop;
+ ov.querySelector('#cf').onclick=()=>{camFace=camFace==='environment'?'user':'environment';start()};
+ ov.querySelector('#cs').onclick=()=>{if(!v.videoWidth){msg('Kamera belum siap, tunggu sebentar.');return}
+  const k=Math.min(1,900/Math.max(v.videoWidth,v.videoHeight)),c=document.createElement('canvas');c.width=Math.round(v.videoWidth*k);c.height=Math.round(v.videoHeight*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+  pimg=c.toDataURL('image/jpeg',.8);pres=null;pmsg='';stop();payUI()};
+ start()}
 function payUI(){
  $('#kb').innerHTML=`<div class="card"><h2>📸 Paylater Santri</h2>
  ${santri.length?`<select id="ps"><option value="">— Pilih santri —</option>${santri.map(s=>`<option value="${s.id}" ${psid===s.id?'selected':''}>${esc(s.n)}${s.k?' · '+esc(s.k):''}</option>`).join('')}</select>`:'<p class="mut">Belum ada data santri. Tambahkan dulu di bagian "Data santri" di bawah.</p>'}
  <div style="margin-top:8px">${menuList(pc,'pl')}</div>
- <div style="margin-top:10px"><label class="mut">Foto pesanan santri (kamera terbuka otomatis di HP)</label><input type="file" id="pf" accept="image/*" capture="environment">${pimg?`<img class="ph" src="${pimg}" alt="Foto pesanan">`:''}</div>
+ <div style="margin-top:10px"><label class="mut">Foto pesanan santri</label><div class="row" style="margin-top:4px"><button class="btn pr" id="pcam" type="button">📷 Buka kamera</button><label class="btn" style="cursor:pointer;text-align:center">🖼️ Pilih foto / galeri<input type="file" id="pf" accept="image/*" hidden></label></div>${pimg?`<img class="ph" src="${pimg}" alt="Foto pesanan">`:''}</div>
  <p><b>Total: ${rp(cartTotal(pc))}</b></p><button class="btn pr" id="pgo" ${pbusy?'disabled':''}>Simpan pesanan paylater</button><p class="mut">${esc(pmsg)}</p>
  ${pres?`<div class="banner open">✅ Pesanan ${esc(pres.name)} tersimpan sebagai hutang.<br><a class="btn pr" style="margin-top:8px" href="${pres.link}" target="_blank" rel="noopener">📲 Kirim ke WA Orang Tua</a></div>`:''}</div>
  <div id="plst"></div>
@@ -145,6 +164,7 @@ function payUI(){
  const k=$('#kb');
  k.querySelectorAll('[data-a=pl]').forEach(b=>b.onclick=()=>{pc[b.dataset.i]=Math.max(0,(pc[b.dataset.i]||0)+ +b.dataset.d);payUI()});
  const ps=$('#ps');if(ps)ps.onchange=e=>{psid=e.target.value;pres=null};
+ $('#pcam').onclick=camOpen;
  $('#pf').onchange=async e=>{const f=e.target.files[0];if(!f)return;pres=null;try{pimg=await shrink(f);pmsg=''}catch(x){pmsg='Foto gagal dibaca, coba lagi.'}payUI()};
  $('#pgo').onclick=paySave;
  $('#sa').onclick=async()=>{const n=$('#sn1').value.trim(),w=wanum($('#sw').value);if(!n||w.length<10)return alert('Isi nama santri dan nomor WA orang tua yang benar.');
