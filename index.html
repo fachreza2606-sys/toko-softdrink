@@ -38,6 +38,11 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--ln);text-align:right;white-s
 .mg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .mc{background:var(--card);border:1px solid var(--ln);border-radius:16px;padding:12px;display:grid;gap:3px;justify-items:start}
 .em{font-size:34px}.mc .qty{margin-top:6px}.soon{border-style:dashed;text-align:center}
+.mc.so{opacity:.62}.mc.so .em,.mc.so .mi{filter:grayscale(1)}
+.sob{display:inline-block;background:var(--bad);color:var(--prt);border-radius:99px;font-size:11px;font-weight:700;padding:1px 8px;letter-spacing:.3px}
+details.card>summary{cursor:pointer;list-style:none}details.card>summary::-webkit-details-marker{display:none}
+details.card[open]>summary{margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--ln)}
+label.mut{display:grid;gap:3px}
 #nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:860px;display:flex;background:var(--card);border-top:1px solid var(--ln);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:5}
 .nb{flex:1;background:none;border:0;display:grid;justify-items:center;gap:1px;font-size:11px;color:var(--mut);padding:4px;cursor:pointer;position:relative}
 .nb span{font-size:21px}.nb.on{color:var(--pr);font-weight:600}
@@ -129,9 +134,17 @@ const FID=new URLSearchParams(location.search).get('foto');
 let santri=[],pc={},psid='',pimg=null,pmsg='',pres=null,pbusy=false,fimg=null;
 const wanum=s=>{let n=String(s||'').replace(/\D/g,'');if(n.startsWith('0'))n='62'+n.slice(1);else if(n.startsWith('8'))n='62'+n;return n};
 const fotoUrl=id=>location.origin+location.pathname+'?foto='+id;
-function waLink(o){const s=santri.find(x=>x.id===o.sid),n=s?wanum(s.wa):'';
- const t="Assalamu'alaikum Bapak/Ibu, wali dari ananda "+o.name+".\n\nAnanda mengambil pesanan di "+(store.name||'Softdrink')+" (paylater):\n"+o.items.map(i=>'• '+i.n+' ×'+i.q).join('\n')+"\n\nTotal: "+rp(o.total)+"\n\nFoto pesanan dan QRIS pembayaran:\n"+fotoUrl(o.id)+"\n\nMohon dibayar lewat QRIS toko pada link di atas. Jazakumullah khairan.";
- return 'https://wa.me/'+n+'?text='+encodeURIComponent(t)}
+function waText(o){return "Assalamu'alaikum Bapak/Ibu, wali dari ananda "+o.name+".\n\nAnanda mengambil pesanan di "+(store.name||'Softdrink')+" (paylater):\n"+o.items.map(i=>'• '+i.n+' ×'+i.q).join('\n')+"\n\nTotal: "+rp(o.total)+"\n\nFoto pesanan dan QRIS pembayaran:\n"+fotoUrl(o.id)+"\n\nMohon dibayar lewat QRIS toko pada link di atas. Jazakumullah khairan."}
+function waLink(o){const s=santri.find(x=>x.id===o.sid),n=s?wanum(s.wa):'';return 'https://wa.me/'+n+'?text='+encodeURIComponent(waText(o))}
+/* kirim FOTO pesanan langsung (file gambar + pesan) lewat menu bagikan HP, pilih WhatsApp lalu kontak orang tua */
+async function shareFoto(o,img){
+ if(!o)return;
+ try{if(!img){const f=await db.doc('foto/'+o.id).get();img=f.exists?f.data().img:null}}catch(e){}
+ if(!img)return alert('Foto pesanan tidak ditemukan.');
+ try{const b=await (await fetch(img)).blob(),f=new File([b],'pesanan-'+String(o.name).replace(/\W+/g,'-')+'.jpg',{type:'image/jpeg'});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],text:waText(o)});return}}
+ catch(e){if(e&&e.name==='AbortError')return}
+ alert('Browser ini tidak bisa membagikan foto langsung. Buka lewat Chrome (Android) atau Safari (iPhone), atau pakai tombol kirim tautan ke WA orang tua.')}
 let camStream=null,camFace='environment';
 function camOpen(){
  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert('Kamera langsung tidak tersedia di browser ini. Gunakan tombol "Pilih foto / galeri", atau buka situs lewat Chrome atau Safari (bukan dari dalam aplikasi WhatsApp/Instagram).');return}
@@ -157,7 +170,7 @@ function payUI(){
  <div style="margin-top:8px">${menuList(pc,'pl')}</div>
  <div style="margin-top:10px"><label class="mut">Foto pesanan santri</label><div class="row" style="margin-top:4px"><button class="btn pr" id="pcam" type="button">📷 Buka kamera</button><label class="btn" style="cursor:pointer;text-align:center">🖼️ Pilih foto / galeri<input type="file" id="pf" accept="image/*" hidden></label></div>${pimg?`<img class="ph" src="${pimg}" alt="Foto pesanan">`:''}</div>
  <p><b>Total: ${rp(cartTotal(pc))}</b></p><button class="btn pr" id="pgo" ${pbusy?'disabled':''}>Simpan pesanan paylater</button><p class="mut">${esc(pmsg)}</p>
- ${pres?`<div class="banner open">✅ Pesanan ${esc(pres.name)} tersimpan sebagai hutang.<br><a class="btn pr" style="margin-top:8px" href="${pres.link}" target="_blank" rel="noopener">📲 Kirim ke WA Orang Tua</a></div>`:''}</div>
+ ${pres?`<div class="banner open">✅ Pesanan ${esc(pres.name)} tersimpan sebagai hutang.<div class="row" style="margin-top:8px"><button class="btn pr" id="psh" type="button">🖼️ Kirim foto + pesan ke WA</button><a class="btn" href="${pres.link}" target="_blank" rel="noopener">📲 Kirim tautan ke WA Orang Tua</a></div><span class="mut">Nomor WA orang tua: +${esc(pres.to)}. Pada tombol foto, pilih WhatsApp lalu pilih kontak orang tua tersebut.</span></div>`:''}</div>
  <div id="plst"></div>
  <div class="card"><h2>Data santri</h2><div class="row"><input id="sn1" placeholder="Nama santri"><input id="sk" placeholder="Kelas / asrama (opsional)"><input id="sw" type="tel" inputmode="tel" placeholder="No. WA orang tua (0812…)"><button class="btn pr" id="sa">Tambah</button></div>
  <div style="margin-top:8px">${santri.map(s=>`<div class="item"><span>${esc(s.n)}${s.k?' · '+esc(s.k):''} <span class="mut">${esc(s.wa)}</span></span><button class="btn sm" data-sd="${s.id}">Hapus</button></div>`).join('')||'<p class="mut">Belum ada santri.</p>'}</div></div>`;
@@ -167,6 +180,7 @@ function payUI(){
  $('#pcam').onclick=camOpen;
  $('#pf').onchange=async e=>{const f=e.target.files[0];if(!f)return;pres=null;try{pimg=await shrink(f);pmsg=''}catch(x){pmsg='Foto gagal dibaca, coba lagi.'}payUI()};
  $('#pgo').onclick=paySave;
+ const psh=$('#psh');if(psh)psh.onclick=()=>shareFoto(pres.o,pres.img);
  $('#sa').onclick=async()=>{const n=$('#sn1').value.trim(),w=wanum($('#sw').value);if(!n||w.length<10)return alert('Isi nama santri dan nomor WA orang tua yang benar.');
   await db.doc('config/santri').set({items:[...santri,{id:'s'+Date.now(),n,k:$('#sk').value.trim(),wa:w}]});payUI()};
  k.querySelectorAll('[data-sd]').forEach(b=>b.onclick=async()=>{if(!confirm('Hapus santri ini?'))return;await db.doc('config/santri').set({items:santri.filter(x=>x.id!==b.dataset.sd)});payUI()});
@@ -177,19 +191,21 @@ async function paySave(){
  if(!items.length)return(pmsg='Pilih menu dulu.',payUI());
  if(!pimg)return(pmsg='Foto pesanan belum diambil.',payUI());
  if(!wanum(s.wa))return(pmsg='Nomor WA orang tua belum diisi.',payUI());
- if(live().some(m=>m.stock!==undefined&&pc[m.id]>m.stock))return(pmsg='Stok berubah, kurangi jumlah pesanan.',payUI());
+ if(live().some(m=>m.stock!==undefined&&pc[m.id]>m.stock))return(pmsg='Ada menu yang habis atau stoknya berkurang, kurangi jumlah pesanan.',payUI());
  pbusy=true;pmsg='Menyimpan…';payUI();
  try{const total=cartTotal(pc);await bump(items,1);
   const r=await db.collection('orders').add({src:'kasir',paylater:true,sid:s.id,name:s.n,note:'Paylater',items,total,method:'qris',paid:false,date:today(),ts:Date.now()});
   await db.doc('foto/'+r.id).set({img:pimg,ts:Date.now()});
-  pres={name:s.n,link:waLink({id:r.id,name:s.n,items,total,sid:s.id})};pc={};pimg=null;pmsg=''}
+  const oo={id:r.id,name:s.n,items,total,sid:s.id};
+  pres={name:s.n,link:waLink(oo),img:pimg,o:oo,to:wanum(s.wa)};pc={};pimg=null;pmsg=''}
  catch(e){pmsg='Gagal menyimpan, coba lagi.'}
  pbusy=false;payUI()}
 function payList(){const el=$('#plst');if(!el)return;
  const P=orders.filter(o=>o.paylater).sort((a,b)=>b.ts-a.ts),debt={};
  P.filter(o=>!o.paid).forEach(o=>{debt[o.name]=(debt[o.name]||0)+o.total});
  el.innerHTML=`<div class="card"><h2>Hutang paylater per santri</h2>${Object.entries(debt).sort((a,b)=>b[1]-a[1]).map(([n,t])=>`<div class="item"><span>${esc(n)}</span><b class="debt">${rp(t)}</b></div>`).join('')||'<p class="mut">Tidak ada hutang paylater.</p>'}</div>
- <div class="card"><h2>Riwayat paylater</h2>${P.slice(0,15).map(o=>`<div class="item" style="align-items:flex-start"><div><b>${esc(o.name)}</b> <span class="badge ${o.paid?'open':'closed'}">${o.paid?'Lunas':'Belum bayar'}</span><div class="mut">${o.date} · ${o.items.map(i=>esc(i.n)+' ×'+i.q).join(', ')}${o.proof?` · <a href="${o.proof}" download="bukti-qris.jpg">📎 Bukti</a>`:''}</div><b>${rp(o.total)}</b></div><div style="display:grid;gap:4px"><a class="btn sm" target="_blank" rel="noopener" href="${waLink(o)}">📲 Kirim WA</a><button class="btn sm ${o.paid?'pr':''}" data-lp="${o.id}">${o.paid?'Lunas':'Tandai lunas'}</button></div></div>`).join('')||'<p class="mut">Belum ada pesanan paylater.</p>'}</div>`;
+ <div class="card"><h2>Riwayat paylater</h2>${P.slice(0,15).map(o=>`<div class="item" style="align-items:flex-start"><div><b>${esc(o.name)}</b> <span class="badge ${o.paid?'open':'closed'}">${o.paid?'Lunas':'Belum bayar'}</span><div class="mut">${o.date} · ${o.items.map(i=>esc(i.n)+' ×'+i.q).join(', ')}${o.proof?` · <a href="${o.proof}" download="bukti-qris.jpg">📎 Bukti</a>`:''}</div><b>${rp(o.total)}</b></div><div style="display:grid;gap:4px"><button class="btn sm" data-sf="${o.id}">🖼️ Kirim foto</button><a class="btn sm" target="_blank" rel="noopener" href="${waLink(o)}">📲 Kirim tautan</a><button class="btn sm ${o.paid?'pr':''}" data-lp="${o.id}">${o.paid?'Lunas':'Tandai lunas'}</button></div></div>`).join('')||'<p class="mut">Belum ada pesanan paylater.</p>'}<p class="mut">Arsip lengkap paylater ada di tab Arsip Toko.</p></div>`;
+ el.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>shareFoto(orders.find(x=>x.id===b.dataset.sf)));
  el.querySelectorAll('[data-lp]').forEach(b=>b.onclick=()=>{const o=orders.find(x=>x.id===b.dataset.lp);db.doc('orders/'+o.id).update({paid:!o.paid})})}
 /* halaman untuk orang tua: ?foto=ID */
 function fview(){const el=$('#fv'),o=orders.find(x=>x.id===FID);
@@ -200,15 +216,17 @@ function fview(){const el=$('#fv'),o=orders.find(x=>x.id===FID);
 
 /* ---------- PEMBELI ---------- */
 let soldMap={};function sold(id){return soldMap[today()+'_'+id]||0}
-function live(){const L=[...menu];CATS.slice(1).forEach((c,k)=>{const u=setor['u'+(k+1)];if(!u)return;[['nasi','Nasi','pn'],['batagor','Batagor','pb']].forEach(([key,nm,pk])=>{if(u[key]>0){const id='u'+(k+1)+'-'+key;L.push({id,n:nm,p:u[pk]||0,cat:c,stock:u[key]-sold(id)})}})});return L}
+/* menu yang ditandai habis (so) dianggap stok 0, jadi tampil SOLD OUT dan tidak bisa dipesan */
+function live(){const L=menu.map(m=>m.so?{...m,stock:0}:m);CATS.slice(1).forEach((c,k)=>{const u=setor['u'+(k+1)];if(!u)return;[['nasi','Nasi','pn'],['batagor','Batagor','pb']].forEach(([key,nm,pk])=>{if(u[key]>0){const id='u'+(k+1)+'-'+key;L.push({id,n:nm,p:u[pk]||0,cat:c,stock:u[key]-sold(id)})}})});return L}
+const togSO=id=>db.doc('menu/main').set({items:menu.map(m=>{if(m.id!==id)return m;const r={...m};if(r.so)delete r.so;else r.so=true;return r})}).catch(x=>alert('Gagal menyimpan status menu.\n\nDetail: '+((x&&(x.code||x.message))||x)));
 function cartTotal(c){return live().reduce((s,m)=>s+(c[m.id]||0)*m.p,0)}
-function menuList(c,fn){let h='';CATS.forEach(cat=>{const L=live().filter(m=>m.cat===cat);if(!L.length)return;h+=`<div class="mut" style="margin-top:8px">${cat==='Toko'?'Menu Toko':'Setoran '+uname(cat)}</div>`;L.forEach(m=>h+=`<div class="item"><div>${esc(m.n)}<div class="mut">${rp(m.p)}${m.stock!==undefined?(m.stock>0?' · Sisa '+m.stock:' · <span class="debt">Habis</span>'):''}</div></div><div class="qty"><button class="btn sm" data-a="${fn}" data-d="-1" data-i="${m.id}">−</button><b>${c[m.id]||0}</b><button class="btn sm" data-a="${fn}" data-d="1" data-i="${m.id}" ${m.stock!==undefined&&(c[m.id]||0)>=m.stock?'disabled':''}>+</button></div></div>`)});return h||'<p class="mut">Menu belum tersedia.</p>'}
+function menuList(c,fn){let h='';CATS.forEach(cat=>{const L=live().filter(m=>m.cat===cat);if(!L.length)return;h+=`<div class="mut" style="margin-top:8px">${cat==='Toko'?'Menu Toko':'Setoran '+uname(cat)}</div>`;L.forEach(m=>h+=`<div class="item"><div>${esc(m.n)}<div class="mut">${rp(m.p)}${m.stock!==undefined?(m.stock>0?' · Sisa '+m.stock:' · <span class="sob">SOLD OUT</span>'):''}</div></div><div class="qty"><button class="btn sm" data-a="${fn}" data-d="-1" data-i="${m.id}">−</button><b>${c[m.id]||0}</b><button class="btn sm" data-a="${fn}" data-d="1" data-i="${m.id}" ${m.stock!==undefined&&(c[m.id]||0)>=m.stock?'disabled':''}>+</button></div></div>`)});return h||'<p class="mut">Menu belum tersedia.</p>'}
 let bpage='home',qmsg='';
 const emo=n=>{n=n.toLowerCase();return/nasi/.test(n)?'🍚':/batagor|siomay/.test(n)?'🥟':/air|aqua|mineral/.test(n)?'💧':/teh/.test(n)?'🍵':/kopi/.test(n)?'☕':/jeruk|orange/.test(n)?'🍊':'🥤'};
 const cnt=c=>Object.values(c).reduce((a,b)=>a+b,0),blur=()=>document.activeElement&&document.activeElement.blur&&document.activeElement.blur();
 const go=p=>{blur();bpage=p;buyerUI();scrollTo(0,0)};
 const stp=(m,c)=>{const q=c[m.id]||0,mx=m.stock!==undefined&&q>=m.stock;return`<div class="qty"><button class="btn sm" data-a="b" data-d="-1" data-i="${m.id}">−</button><b>${q}</b><button class="btn sm" data-a="b" data-d="1" data-i="${m.id}" ${mx?'disabled':''}>+</button></div>`};
-const cards=(c,l)=>`<div class="mg">${l.map(m=>`<div class="mc">${m.img?`<img src="${m.img}" alt="${esc(m.n)}" class="mi">`:`<div class="em">${emo(m.n)}</div>`}<b>${esc(m.n)}</b><div class="mut">${rp(m.p)}${m.stock!==undefined?(m.stock>0?' · Sisa '+m.stock:' · <span class="debt">Habis</span>'):''}</div>${stp(m,c)}</div>`).join('')}</div>`;
+const cards=(c,l)=>`<div class="mg">${l.map(m=>`<div class="mc${m.stock!==undefined&&m.stock<=0?' so':''}">${m.img?`<img src="${m.img}" alt="${esc(m.n)}" class="mi">`:`<div class="em">${emo(m.n)}</div>`}<b>${esc(m.n)}</b><div class="mut">${rp(m.p)}${m.stock!==undefined?(m.stock>0?' · Sisa '+m.stock:' · <span class="sob">SOLD OUT</span>'):''}</div>${stp(m,c)}</div>`).join('')}</div>`;
 function quick(t){const L=live();let n=0;t.toLowerCase().split(/[,\n]+/).forEach(p=>{const m=p.match(/(\d+)/),q=m?+m[1]:1,w=p.replace(/\d+/g,'').trim();if(!w)return;const f=L.find(x=>{const k=x.n.toLowerCase();return k.includes(w)||w.includes(k)});if(f&&!(f.stock!==undefined&&f.stock<=0)){bc[f.id]=Math.min(f.stock===undefined?1e9:f.stock,(bc[f.id]||0)+q);n++}});return n}
 function buyerUI(){
  const ac=document.activeElement;if(ac&&ac.tagName==='INPUT'&&ac.type!=='file'&&$('#buyer').contains(ac))return;
@@ -226,7 +244,7 @@ function buyerUI(){
   <div class="card soon"><span class="badge">✨ Segera Hadir</span><h2 style="margin-top:8px">Kumpulkan Poin, Tukar Hadiah!</h2><p class="mut">Sebentar lagi setiap pesananmu menghasilkan poin yang bisa ditukar menu gratis. Nantikan ya! 🎁</p></div>`}
  else if(bpage==='menu'){h=ban+(CATS.map(c=>{const l=L.filter(m=>m.cat===c);return l.length?`<div class="mut" style="margin:10px 0 6px">${c==='Toko'?'Menu Toko':'Setoran '+esc(uname(c))}</div>`+cards(bc,l):''}).join('')||'<div class="card mut">Menu belum tersedia.</div>')}
  else if(bpage==='cart'){const ci=L.filter(m=>bc[m.id]);
-  h=`<div class="card"><h2>🛒 Keranjang</h2>${ci.map(m=>`<div class="item"><div>${m.img?`<img src="${m.img}" alt="" style="width:28px;height:28px;border-radius:7px;object-fit:cover;vertical-align:middle">`:emo(m.n)} ${esc(m.n)}<div class="mut">${rp(m.p)} × ${bc[m.id]}</div></div>${stp(m,bc)}</div>`).join('')||'<p class="mut">Keranjang masih kosong.</p><button class="btn pr" data-go="menu">Pilih Menu</button>'}<p class="mut">${esc(msg)}</p></div>`;
+  h=`<div class="card"><h2>🛒 Keranjang</h2>${ci.map(m=>`<div class="item"><div>${m.img?`<img src="${m.img}" alt="" style="width:28px;height:28px;border-radius:7px;object-fit:cover;vertical-align:middle">`:emo(m.n)} ${esc(m.n)}${m.stock!==undefined&&m.stock<=0?' <span class="sob">SOLD OUT</span>':''}<div class="mut">${rp(m.p)} × ${bc[m.id]}</div></div>${stp(m,bc)}</div>`).join('')||'<p class="mut">Keranjang masih kosong.</p><button class="btn pr" data-go="menu">Pilih Menu</button>'}<p class="mut">${esc(msg)}</p></div>`;
   if(ci.length)h+=form+`<div class="card"><div class="row"><select id="bm"><option value="cash" ${bmeth==='cash'?'selected':''}>Bayar Cash</option><option value="qris" ${bmeth==='qris'?'selected':''}>Bayar QRIS</option></select></div>${qr}<div style="margin-top:10px"><label class="mut">Upload bukti pembayaran QRIS (opsional)</label><input type="file" id="bf" accept="image/*"><div class="mut">${proofFile?'📎 '+esc(proofFile.name):''}</div></div><p><b>Total: ${rp(cartTotal(bc))}</b></p><button class="btn pr" id="bgo" ${o?'':'disabled'}>Pesan Sekarang</button></div>`}
  else{h=`<div class="card" style="text-align:center">${tema.logo?`<img src="${tema.logo}" alt="Logo toko" style="width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--ln)">`:'<div style="font-size:48px">🏪</div>'}<h2 style="margin-top:8px">${esc(store.name)}</h2>${store.tagline?`<p class="mut">${esc(store.tagline)}</p>`:''}${store.desc?`<p>${esc(store.desc)}</p>`:''}<p class="mut">Jam buka ${store.open}–${store.close} · ${o?'Sedang BUKA':'Sedang TUTUP'}</p>${store.addr?`<p class="mut">📍 ${esc(store.addr)}</p>`:''}${wanum(store.wa)?`<p><a class="btn pr" target="_blank" rel="noopener" href="https://wa.me/${wanum(store.wa)}">💬 Chat WhatsApp Toko</a></p>`:''}<p class="mut">Pesan lewat HP, lalu ambil dan bayar di toko (cash atau QRIS).</p></div>${form}${store.qris?`<div class="card" style="text-align:center"><h2>QRIS Toko</h2><img src="${store.qris}" alt="QRIS toko" style="max-width:240px;width:100%;border-radius:12px"></div>`:''}`}
  el.innerHTML=h;bindB()}
@@ -234,9 +252,9 @@ function bindB(){const el=$('#buyer'),on=(s,k,f)=>{const e=$(s);if(e)e[k]=f};
  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
  el.querySelectorAll('[data-a=b]').forEach(b=>b.onclick=()=>{bc[b.dataset.i]=Math.max(0,(bc[b.dataset.i]||0)+ +b.dataset.d);buyerUI()});
  on('#bn','oninput',e=>bname=e.target.value);on('#bt','oninput',e=>bnote=e.target.value);on('#bm','onchange',e=>bmeth=e.target.value);on('#bf','onchange',e=>{proofFile=e.target.files[0]||null;buyerUI()});
- on('#qb','onclick',()=>{blur();const n=quick($('#qo').value);qmsg=n?'✅ '+n+' menu masuk keranjang.':'Menu tidak ditemukan, coba tulis nama menunya.';if(n)bpage='cart';buyerUI()});
+ on('#qb','onclick',()=>{blur();const n=quick($('#qo').value);qmsg=n?'✅ '+n+' menu masuk keranjang.':'Menu tidak ditemukan atau sedang SOLD OUT, coba menu lain.';if(n)bpage='cart';buyerUI()});
  on('#bgo','onclick',async()=>{blur();const items=live().filter(m=>bc[m.id]).map(m=>({id:m.id,n:m.n,p:m.p,q:bc[m.id],cat:m.cat}));
-  if(!items.length)return(msg='Pilih menu dulu.',buyerUI());if(!bname.trim())return(msg='Isi nama Anda.',buyerUI());if(live().some(m=>m.stock!==undefined&&bc[m.id]>m.stock))return(msg='Stok berubah, kurangi jumlah pesanan.',buyerUI());if(!isOpen())return;
+  if(!items.length)return(msg='Pilih menu dulu.',buyerUI());if(!bname.trim())return(msg='Isi nama Anda.',buyerUI());if(live().some(m=>m.stock!==undefined&&bc[m.id]>m.stock))return(msg='Ada menu yang SOLD OUT atau stoknya berkurang, kurangi jumlah pesanan.',buyerUI());if(!isOpen())return;
   try{let proof=null;if(proofFile){const a=await claude.use('assets');if(!a){msg='Upload bukti belum tersedia.';return buyerUI()}proof=(await a.upload(proofFile)).id}await bump(items,1);await db.collection('orders').add({src:'online',name:bname.trim(),note:bnote,items,total:cartTotal(bc),method:bmeth,paid:false,proof,date:today(),ts:Date.now()});bc={};proofFile=null;msg='✅ Pesanan terkirim ke kasir. Terima kasih!'}catch(e){msg='Gagal mengirim, coba lagi.'}buyerUI()})}
 
 /* ---------- KASIR ---------- */
@@ -253,37 +271,42 @@ function startKasir(){
  if(!started){started=true;
   
   db.collection('daily').onSnapshot(s=>{daily={};s.docs.forEach(d=>daily[d.id]=d.data());kasirParts()});
+  db.collection('setoran').onSnapshot(s=>{setoranAll={};s.docs.forEach(d=>setoranAll[d.id]=d.data());if(sub==='arc'&&!$('#kasir').hidden)arcList()});
   db.doc('config/santri').onSnapshot(s=>{santri=s.exists?(s.data().items||[]):[];if(sub==='pay'&&!$('#kasir').hidden&&document.activeElement===document.body)payUI()})}
  kasirUI()}
 function kasirUI(){
- $('#kasir').innerHTML=`<div class="row" style="margin-bottom:8px"><button class="btn sm ${sndOn?'pr':''}" id="snd">${sndOn?'🔔 Suara pesanan: ON':'🔕 Suara pesanan: OFF'}</button><button class="btn sm" id="sndt">Tes suara</button></div><div class="sub">${[['sale','Kasir & Pesanan'],['stk','Setoran Hari Ini'],['rep','Laporan'],['pay','📸 Paylater'],['prof','🎨 Profil & Tampilan'],['set','Menu & Pengaturan']].map(([k,l])=>`<button class="btn ${sub===k?'pr':''}" data-s="${k}">${l}</button>`).join('')}<button class="btn" id="lock" style="margin-left:auto">Kunci</button></div><div id="kb"></div>`;
+ $('#kasir').innerHTML=`<div class="row" style="margin-bottom:8px"><button class="btn sm ${sndOn?'pr':''}" id="snd">${sndOn?'🔔 Suara pesanan: ON':'🔕 Suara pesanan: OFF'}</button><button class="btn sm" id="sndt">Tes suara</button></div><div class="sub">${[['sale','Kasir & Pesanan'],['stk','Setoran Hari Ini'],['rep','Laporan'],['arc','🗄️ Arsip Toko'],['pay','📸 Paylater'],['prof','🎨 Profil & Tampilan'],['set','Menu & Pengaturan']].map(([k,l])=>`<button class="btn ${sub===k?'pr':''}" data-s="${k}">${l}</button>`).join('')}<button class="btn" id="lock" style="margin-left:auto">Kunci</button></div><div id="kb"></div>`;
  $('#kasir').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{sub=b.dataset.s;kasirUI()});
  $('#snd').onclick=()=>{sndOn=!sndOn;try{localStorage.setItem('snd',sndOn?'1':'0')}catch(e){}if(sndOn)beep(true);kasirUI()};
  $('#sndt').onclick=()=>beep(true);
  $('#lock').onclick=()=>{try{sessionStorage.removeItem('pk')}catch(e){}location.reload()};
- if(sub==='sale')saleUI();if(sub==='stk')stkUI();if(sub==='set')setUI();if(sub==='pay')payUI();if(sub==='prof')profUI();kasirParts()}
-function kasirParts(){if($('#kasir').hidden||!unlocked)return;if(sub==='sale')listUI();else if(sub==='rep')repUI();else if(sub==='stk')stkSt();else if(sub==='pay')payList()}
+ if(sub==='sale')saleUI();if(sub==='stk')stkUI();if(sub==='set')setUI();if(sub==='pay')payUI();if(sub==='prof')profUI();if(sub==='arc')arcUI();kasirParts()}
+function kasirParts(){if($('#kasir').hidden||!unlocked)return;if(sub==='sale')listUI();else if(sub==='rep')repUI();else if(sub==='stk')stkSt();else if(sub==='pay')payList();else if(sub==='arc')arcList()}
 function stkUI(){
  $('#kb').innerHTML=`<div class="card"><h2>Setoran hari ini (${today()})</h2><p class="mut">Isi jumlah nasi dan batagor yang disetor tiap unit beserta harganya. Stok otomatis tampil di halaman pembeli dan berkurang tiap ada pesanan.</p><div class="scroll"><table><tr><th>Unit</th><th>Nasi</th><th>Harga</th><th>Batagor</th><th>Harga</th></tr>${[1,2,3,4,5,6].map(k=>{const u=setor['u'+k]||{};return`<tr><td>${esc(un(k))}</td>${['nasi','pn','batagor','pb'].map(f=>`<td><input type="number" min="0" style="width:84px" data-u="u${k}" data-f="${f}" value="${u[f]??''}"></td>`).join('')}</tr>`}).join('')}</table></div><p><button class="btn pr" id="sgo">Simpan setoran</button></p></div><div id="stkst"></div>`;
  $('#sgo').onclick=async()=>{const o={};document.querySelectorAll('[data-u]').forEach(i=>{(o[i.dataset.u]=o[i.dataset.u]||{})[i.dataset.f]=+i.value||0});await db.doc('setoran/'+today()).set(o);alert('Setoran tersimpan.')};stkSt()}
-function stkSt(){const el=$('#stkst');if(!el)return;el.innerHTML=`<div class="card"><h2>Stok saat ini (sisa / setor)</h2><div class="scroll"><table><tr><th>Unit</th><th>Nasi</th><th>Batagor</th></tr>${[1,2,3,4,5,6].map(k=>{const u=setor['u'+k]||{};return`<tr><td>${esc(un(k))}</td><td>${(u.nasi||0)-sold('u'+k+'-nasi')} / ${u.nasi||0}</td><td>${(u.batagor||0)-sold('u'+k+'-batagor')} / ${u.batagor||0}</td></tr>`}).join('')}</table></div></div>`}
+function stkSt(){const el=$('#stkst');if(!el)return;el.innerHTML=`<div class="card"><h2>Stok saat ini (sisa / setor)</h2><div class="scroll"><table><tr><th>Unit</th><th>Nasi</th><th>Batagor</th></tr>${[1,2,3,4,5,6].map(k=>{const u=setor['u'+k]||{};return`<tr><td>${esc(un(k))}</td><td>${(u.nasi||0)-sold('u'+k+'-nasi')} / ${u.nasi||0}</td><td>${(u.batagor||0)-sold('u'+k+'-batagor')} / ${u.batagor||0}</td></tr>`}).join('')}</table></div><p class="mut">Setoran hari-hari sebelumnya ada di tab Arsip Toko.</p></div>`}
 function saleUI(){
  $('#kb').innerHTML=`<div class="card"><h2>Penjualan baru</h2>${menuList(kc,'k')}<div class="row" style="margin-top:10px"><input id="kn" placeholder="Nama pembeli (opsional)" value="${esc(kname)}"><select id="km"><option value="cash" ${kmeth==='cash'?'selected':''}>Cash</option><option value="qris" ${kmeth==='qris'?'selected':''}>QRIS</option></select><select id="kp"><option value="1" ${kpaid?'selected':''}>Sudah dibayar</option><option value="0" ${kpaid?'':'selected'}>Belum dibayar (hutang)</option></select></div>
  <p><b>Total: ${rp(cartTotal(kc))}</b> <button class="btn pr" id="kgo">Simpan penjualan</button></p></div>
+ <div class="card"><h2>🚫 Tandai menu habis (SOLD OUT)</h2>${menu.length?`<div class="row">${menu.map(m=>`<button class="btn sm ${m.so?'pr':''}" data-so="${m.id}">${esc(m.n)}${m.so?' · SOLD OUT':''}</button>`).join('')}</div>`:'<p class="mut">Belum ada menu toko. Tambahkan di tab Menu & Pengaturan.</p>'}<p class="mut">Ketuk nama menu untuk menandai habis, ketuk lagi kalau sudah tersedia. Menu SOLD OUT tampil abu-abu dan tidak bisa dipesan di halaman pembeli. Nasi dan batagor setoran otomatis SOLD OUT saat stoknya 0.</p></div>
  <div class="card"><h2>Pembeli masuk hari ini</h2><div class="row"><button class="btn" id="wm">−</button><b id="wn" style="text-align:center;font-size:22px">${daily[today()]?.walkin||0}</b><button class="btn pr" id="wp">+</button></div><p class="mut">Tekan + setiap ada pembeli masuk toko.</p></div>
  <div id="lst"></div>`;
  $('#kb').querySelectorAll('[data-a=k]').forEach(b=>b.onclick=()=>{kc[b.dataset.i]=Math.max(0,(kc[b.dataset.i]||0)+ +b.dataset.d);saleUI();listUI()});
+ $('#kb').querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>togSO(b.dataset.so));
  $('#kn').oninput=e=>kname=e.target.value;$('#km').onchange=e=>kmeth=e.target.value;$('#kp').onchange=e=>kpaid=e.target.value==='1';
  $('#kgo').onclick=async()=>{const items=live().filter(m=>kc[m.id]).map(m=>({id:m.id,n:m.n,p:m.p,q:kc[m.id],cat:m.cat}));if(!items.length)return;
+  if(live().some(m=>m.stock!==undefined&&kc[m.id]>m.stock))return alert('Ada menu yang SOLD OUT atau stoknya berkurang. Kurangi jumlahnya dulu.');
   await bump(items,1);await db.collection('orders').add({src:'kasir',name:kname||'Pembeli',items,total:cartTotal(kc),method:kmeth,paid:kpaid,date:today(),ts:Date.now()});kc={};kname='';saleUI();listUI()};
  const w=d=>db.doc('daily/'+today()).set({walkin:Math.max(0,(daily[today()]?.walkin||0)+d)});$('#wp').onclick=()=>w(1);$('#wm').onclick=()=>w(-1);listUI()}
 function listUI(){const el=$('#lst');if(!el)return;const w=$('#wn');if(w)w.textContent=daily[today()]?.walkin||0;
  const L=orders.filter(o=>o.date===today()).sort((a,b)=>b.ts-a.ts);
  el.innerHTML=`<div class="card"><h2>Pesanan hari ini (${L.length})</h2>${L.map(o=>`<div class="item" style="align-items:flex-start"><div><b>${esc(o.name)}</b> <span class="badge">${o.paylater?'📸 paylater':o.src==='online'?'🌐 online':'kasir'}</span><div class="mut">${pad(new Date(o.ts).getHours())}:${pad(new Date(o.ts).getMinutes())} · ${o.items.map(i=>esc(i.n)+' ×'+i.q).join(', ')}${o.note?' · '+esc(o.note):''}${o.proof?` · <a href="${o.proof}" download="bukti-qris.jpg">📎 Bukti QRIS</a>`:''}</div><b>${rp(o.total)}</b></div>
- <div style="display:grid;gap:4px"><button class="btn sm" data-m="${o.id}">${o.method==='qris'?'QRIS':'Cash'}</button><button class="btn sm ${o.paid?'pr':''}" data-p="${o.id}">${o.paid?'Sudah bayar':'Belum bayar'}</button>${o.paylater?`<a class="btn sm" target="_blank" rel="noopener" href="${waLink(o)}">📲 WA Ortu</a>`:''}<button class="btn sm" data-x="${o.id}">Hapus</button></div></div>`).join('')||'<p class="mut">Belum ada pesanan.</p>'}</div>`;
+ <div style="display:grid;gap:4px"><button class="btn sm" data-m="${o.id}">${o.method==='qris'?'QRIS':'Cash'}</button><button class="btn sm ${o.paid?'pr':''}" data-p="${o.id}">${o.paid?'Sudah bayar':'Belum bayar'}</button>${o.paylater?`<button class="btn sm" data-sf="${o.id}">🖼️ Kirim foto</button><a class="btn sm" target="_blank" rel="noopener" href="${waLink(o)}">📲 WA Ortu</a>`:''}<button class="btn sm" data-x="${o.id}">Hapus</button></div></div>`).join('')||'<p class="mut">Belum ada pesanan.</p>'}</div>`;
  const g=id=>orders.find(o=>o.id===id);
  el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>db.doc('orders/'+b.dataset.m).update({method:g(b.dataset.m).method==='cash'?'qris':'cash'}));
  el.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>db.doc('orders/'+b.dataset.p).update({paid:!g(b.dataset.p).paid}));
+ el.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>shareFoto(g(b.dataset.sf)));
  el.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>confirm('Hapus pesanan ini?')&&(bump(g(b.dataset.x).items,-1,g(b.dataset.x).date),db.doc('orders/'+b.dataset.x).delete()))}
 const S=L=>({in:L.filter(o=>o.paid).reduce((s,o)=>s+o.total,0),debt:L.filter(o=>!o.paid).reduce((s,o)=>s+o.total,0)});
 function repUI(){
@@ -303,11 +326,39 @@ function repUI(){
  <div class="card"><h2>Pendapatan Toko vs Setoran</h2><div class="scroll"><table><tr><th>Periode</th><th>Toko ✓</th><th>Toko ✗</th><th>Setoran ✓</th><th>Setoran ✗</th></tr>${[['Hari ini',dl],['Minggu',wl],['Bulan Hijriah',ml]].map(([t,L])=>{const a=SR(L,tk),b=SR(L,sr);return`<tr><td>${t}</td><td class="good">${rp(a.in)}</td><td class="debt">${rp(a.debt)}</td><td class="good">${rp(b.in)}</td><td class="debt">${rp(b.debt)}</td></tr>`}).join('')}</table></div>${cats.length?`<h2 style="margin-top:12px">Setoran per unit (hari ini)</h2><div class="scroll"><table><tr><th>Unit</th><th>Sudah bayar</th><th>Belum bayar</th></tr>${cats.map(([c,r])=>`<tr><td>${esc(uname(c))}</td><td class="good">${rp(r.in)}</td><td class="debt">${rp(r.debt)}</td></tr>`).join('')}</table></div>`:''}</div>
  <div class="card"><h2>Pemasukan tiap hari · ${HN[h.m-1]} ${h.y} H</h2><div class="scroll"><table><tr><th>Tanggal</th><th>Cash ✓</th><th>QRIS ✓</th><th>Cash ✗</th><th>QRIS ✗</th><th>Toko ✓</th><th>Setoran ✓</th><th>Total masuk</th></tr>${Object.keys(byDay).sort().reverse().map(k=>{const L=byDay[k];return`<tr><td>${k.slice(5)} <span class="mut">(${hij(k).d} H)</span></td><td>${rp(cell(L,'cash',true))}</td><td>${rp(cell(L,'qris',true))}</td><td class="debt">${rp(cell(L,'cash',false))}</td><td class="debt">${rp(cell(L,'qris',false))}</td><td>${rp(SR(L,tk).in)}</td><td>${rp(SR(L,sr).in)}</td><td><b>${rp(S(L).in)}</b></td></tr>`}).join('')||'<tr><td colspan=8>Belum ada data</td></tr>'}</table></div><p class="mut">✓ = sudah dibayar, ✗ = belum dibayar (hutang)</p></div>`;
  $('#kb').innerHTML='';$('#kb').appendChild(d);$('#rd').onchange=e=>{rdate=e.target.value||today();repUI()}}
+/* ---------- ARSIP TOKO: riwayat penjualan & setoran lampau (sebelum hari ini) ---------- */
+let setoranAll={},arcTab='sale',arcFrom='',arcTo='',arcQ='',arcLim=31,arcOpen=new Set();
+function arcUI(){
+ $('#kb').innerHTML=`<div class="card"><h2>🗄️ Arsip Toko</h2><p class="mut">Semua penjualan dan setoran sebelum hari ini otomatis tersimpan di arsip ini. Data hari ini ada di tab Kasir & Pesanan dan Setoran Hari Ini.</p><div class="sub"><button class="btn ${arcTab==='sale'?'pr':''}" data-at="sale">Riwayat Penjualan</button><button class="btn ${arcTab==='stk'?'pr':''}" data-at="stk">Riwayat Setoran</button></div><div class="row"><label class="mut">Dari tanggal<input type="date" id="af" value="${arcFrom}"></label><label class="mut">Sampai tanggal<input type="date" id="ato" value="${arcTo}"></label>${arcTab==='sale'?`<label class="mut">Cari<input id="aq" placeholder="Nama pembeli atau menu" value="${esc(arcQ)}"></label>`:''}<button class="btn sm" id="ar">Reset</button></div></div><div id="arl"></div>`;
+ $('#kb').querySelectorAll('[data-at]').forEach(b=>b.onclick=()=>{arcTab=b.dataset.at;arcLim=31;arcUI()});
+ $('#af').onchange=e=>{arcFrom=e.target.value;arcLim=31;arcList()};
+ $('#ato').onchange=e=>{arcTo=e.target.value;arcLim=31;arcList()};
+ const q=$('#aq');if(q)q.oninput=e=>{arcQ=e.target.value;arcLim=31;arcList()};
+ $('#ar').onclick=()=>{arcFrom=arcTo=arcQ='';arcLim=31;arcUI()};
+ arcList()}
+function arcList(){const el=$('#arl');if(!el)return;const T=today(),inR=d=>d<T&&(!arcFrom||d>=arcFrom)&&(!arcTo||d<=arcTo);let h='',n=0;
+ if(arcTab==='sale'){
+  const q=arcQ.trim().toLowerCase(),by={};
+  orders.filter(o=>inR(o.date)&&(!q||String(o.name||'').toLowerCase().includes(q)||o.items.some(i=>String(i.n).toLowerCase().includes(q)))).forEach(o=>(by[o.date]=by[o.date]||[]).push(o));
+  const ks=Object.keys(by).sort().reverse(),all=ks.flatMap(k=>by[k]),t=S(all);n=ks.length;
+  h=`<div class="grid" style="margin-bottom:12px"><div class="stat"><span class="mut">Hari tercatat</span><b>${ks.length}</b></div><div class="stat"><span class="mut">Total transaksi</span><b>${all.length}</b></div><div class="stat"><span class="mut">Total masuk</span><b class="good">${rp(t.in)}</b></div><div class="stat"><span class="mut">Total hutang</span><b class="debt">${rp(t.debt)}</b></div></div>`+
+  (ks.slice(0,arcLim).map(k=>{const L=by[k].sort((a,b)=>a.ts-b.ts),s=S(L);
+   return`<details class="card" data-k="${k}" ${arcOpen.has(k)?'open':''}><summary><b>${k}</b> <span class="mut">· ${hlabel(k)}</span><br><span class="good">Masuk ${rp(s.in)}</span> · <span class="debt">Hutang ${rp(s.debt)}</span> · <span class="mut">${L.length} transaksi</span></summary>${L.map(o=>`<div class="item" style="align-items:flex-start"><div><b>${esc(o.name)}</b> <span class="badge">${o.paylater?'📸 paylater':o.src==='online'?'🌐 online':'kasir'}</span> <span class="badge">${o.method==='qris'?'QRIS':'Cash'}</span><div class="mut">${pad(new Date(o.ts).getHours())}:${pad(new Date(o.ts).getMinutes())} · ${o.items.map(i=>esc(i.n)+' ×'+i.q).join(', ')}${o.note?' · '+esc(o.note):''}${o.proof?` · <a href="${o.proof}" download="bukti-qris.jpg">📎 Bukti</a>`:''}</div><b>${rp(o.total)}</b></div><div style="display:grid;gap:4px"><button class="btn sm ${o.paid?'pr':''}" data-ap="${o.id}">${o.paid?'Lunas':'Belum bayar'}</button>${o.paylater?`<a class="btn sm" target="_blank" rel="noopener" href="${waLink(o)}">📲 WA Ortu</a>`:''}</div></div>`).join('')}</details>`}).join('')||'<div class="card mut">Belum ada penjualan lampau di rentang ini.</div>')}
+ else{
+  const ks=Object.keys(setoranAll).filter(inR).sort().reverse(),U=[1,2,3,4,5,6];n=ks.length;
+  const rw=(k,u,f,pf)=>{const d=setoranAll[k]['u'+u]||{},st=d[f]||0,tj=soldMap[k+'_u'+u+'-'+f]||0;return{st,tj,sisa:st-tj,v:tj*(d[pf]||0)}};
+  h=ks.slice(0,arcLim).map(k=>{let ns=0,nt=0,bs=0,bt=0,val=0;
+   const rows=U.map(u=>{const a=rw(k,u,'nasi','pn'),b=rw(k,u,'batagor','pb');if(!a.st&&!b.st)return'';ns+=a.st;nt+=a.tj;bs+=b.st;bt+=b.tj;val+=a.v+b.v;return`<tr><td>${esc(un(u))}</td><td>${a.st}</td><td>${a.tj}</td><td>${a.sisa}</td><td>${b.st}</td><td>${b.tj}</td><td>${b.sisa}</td><td>${rp(a.v+b.v)}</td></tr>`}).join('');
+   return`<details class="card" data-k="s${k}" ${arcOpen.has('s'+k)?'open':''}><summary><b>${k}</b> <span class="mut">· ${hlabel(k)}</span><br><span class="mut">Nasi ${nt}/${ns} terjual · Batagor ${bt}/${bs} terjual · nilai terjual</span> <b class="good">${rp(val)}</b></summary><div class="scroll"><table><tr><th>Unit</th><th>Nasi setor</th><th>Terjual</th><th>Sisa</th><th>Batagor setor</th><th>Terjual</th><th>Sisa</th><th>Nilai terjual</th></tr>${rows||'<tr><td colspan="8">Tidak ada setoran</td></tr>'}</table></div></details>`}).join('')||'<div class="card mut">Belum ada setoran lampau di rentang ini.</div>'}
+ el.innerHTML=h+(n>arcLim?`<p><button class="btn" id="am">Tampilkan lebih banyak (${n-arcLim} hari lagi)</button></p>`:'');
+ el.querySelectorAll('details[data-k]').forEach(d=>d.ontoggle=()=>d.open?arcOpen.add(d.dataset.k):arcOpen.delete(d.dataset.k));
+ el.querySelectorAll('[data-ap]').forEach(b=>b.onclick=()=>{const o=orders.find(x=>x.id===b.dataset.ap);db.doc('orders/'+o.id).update({paid:!o.paid})});
+ const am=$('#am');if(am)am.onclick=()=>{arcLim+=31;arcList()}}
 function setUI(){
  $('#kb').innerHTML=`<div class="card"><h2>Jam buka & status toko</h2><div class="row"><input id="sn" value="${esc(store.name)}" placeholder="Nama toko"><input type="time" id="so" value="${store.open}"><input type="time" id="sc" value="${store.close}"></div>
  <div class="row" style="margin-top:8px"><select id="sm"><option value="auto">Otomatis sesuai jam</option><option value="buka">Paksa BUKA</option><option value="tutup">Paksa TUTUP</option></select><button class="btn pr" id="ss">Simpan</button></div><p class="mut">Status buka/tutup langsung tampil di halaman pembeli.</p></div>
  <div class="card"><h2>Tambah menu</h2><div class="row"><input id="mn" placeholder="Nama menu"><input id="mp" type="number" placeholder="Harga"><select id="mc"><option>Toko</option></select><input type="file" id="mfi" accept="image/*" title="Foto menu (opsional)"><button class="btn pr" id="ma">Tambah</button></div>
- <div style="margin-top:8px">${menu.map(m=>`<div class="item"><span style="display:flex;align-items:center;gap:8px">${m.img?`<img src="${m.img}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover">`:`<span style="font-size:26px">${emo(m.n)}</span>`}<span>${esc(m.n)} · ${rp(m.p)} <span class="badge">${m.cat}</span></span></span><span style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end"><label class="btn sm" style="cursor:pointer">📷 ${m.img?'Ganti':'Foto'}<input type="file" accept="image/*" data-mf="${m.id}" hidden></label>${m.img?`<button class="btn sm" data-mx="${m.id}">Hapus foto</button>`:''}<button class="btn sm" data-d="${m.id}">Hapus</button></span></div>`).join('')||'<p class="mut">Belum ada menu.</p>'}</div></div>
+ <div style="margin-top:8px">${menu.map(m=>`<div class="item"><span style="display:flex;align-items:center;gap:8px">${m.img?`<img src="${m.img}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover">`:`<span style="font-size:26px">${emo(m.n)}</span>`}<span>${esc(m.n)} · ${rp(m.p)} <span class="badge">${m.cat}</span>${m.so?' <span class="sob">SOLD OUT</span>':''}</span></span><span style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end"><button class="btn sm ${m.so?'pr':''}" data-so="${m.id}">${m.so?'Tersedia lagi':'Tandai habis'}</button><label class="btn sm" style="cursor:pointer">📷 ${m.img?'Ganti':'Foto'}<input type="file" accept="image/*" data-mf="${m.id}" hidden></label>${m.img?`<button class="btn sm" data-mx="${m.id}">Hapus foto</button>`:''}<button class="btn sm" data-d="${m.id}">Hapus</button></span></div>`).join('')||'<p class="mut">Belum ada menu.</p>'}</div></div>
  <div class="card"><h2>Nama unit setoran</h2><div class="grid">${[1,2,3,4,5,6].map(k=>`<input id="un${k}" value="${esc(un(k))}" placeholder="Unit ${k}">`).join('')}</div><p><button class="btn pr" id="us">Simpan nama unit</button></p></div>
  <div class="card"><h2>QRIS Toko</h2>${store.qris?`<img src="${store.qris}" alt="QRIS" style="max-width:200px;border-radius:10px"><br>`:'<p class="mut">Belum ada QRIS.</p>'}<input type="file" id="qf" accept="image/*"><p class="mut">Pilih gambar QRIS toko; otomatis tampil di halaman pembeli.</p></div>`;
  $('#sm').value=store.mode;
@@ -321,6 +372,7 @@ function setUI(){
  const mset=(id,img)=>mput(menu.map(m=>{if(m.id!==id)return m;const r={...m};if(img)r.img=img;else delete r.img;return r}));
  $('#kb').querySelectorAll('[data-mf]').forEach(i=>i.onchange=async e=>{const f=e.target.files[0];if(!f)return;let img;try{img=await shr(f,320,.72)}catch(x){return alert('Foto tidak bisa dibaca. Pakai JPG atau PNG.')}try{await mset(i.dataset.mf,img)}catch(x){gagalM(x)}});
  $('#kb').querySelectorAll('[data-mx]').forEach(b=>b.onclick=()=>mset(b.dataset.mx,'').catch(gagalM));
+ $('#kb').querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>togSO(b.dataset.so));
  $('#kb').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>sv(menu.filter(m=>m.id!==b.dataset.d)));
  $('#qf').onchange=async e=>{const f=e.target.files[0];if(!f)return;const a=await claude.use('assets');if(!a)return alert('Upload tidak tersedia.');const r=await a.upload(f);await db.doc('config/store').set({...store,qris:r.id})}}
 
