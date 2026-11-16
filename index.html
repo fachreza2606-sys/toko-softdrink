@@ -56,7 +56,7 @@ textarea{background:var(--bg);border:1px solid var(--ln);border-radius:10px;padd
 .mi{width:100%;height:96px;object-fit:cover;border-radius:12px;margin-bottom:2px}
 a.btn{display:inline-block;color:var(--tx);text-decoration:none;text-align:center}
 .ph{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:12px;margin-top:8px;background:var(--bg)}
-</style></head><body><main>
+</style><meta name="theme-color" content="#0A0A0B"><link rel="stylesheet" href="modern.css"></head><body><main>
 <div id="splash"><button id="skip">Lewati ›</button><div class="es">🥤🥤🥤🥤🥤</div><div style="font-size:26px;font-weight:700">Softdrink</div><div style="opacity:.85">Segar setiap tegukan</div></div>
 <header class="top"><h1 id="shop">🥤 Softdrink</h1><span id="stat" class="badge">…</span></header>
 <div class="tabs"><button class="tab on" data-t="buyer">Pesan Sekarang</button><button class="tab" data-t="kasir">🔒 Kasir</button></div>
@@ -247,7 +247,7 @@ function buyerUI(){
   h=`<div class="card"><h2>🛒 Keranjang</h2>${ci.map(m=>`<div class="item"><div>${m.img?`<img src="${m.img}" alt="" style="width:28px;height:28px;border-radius:7px;object-fit:cover;vertical-align:middle">`:emo(m.n)} ${esc(m.n)}${m.stock!==undefined&&m.stock<=0?' <span class="sob">SOLD OUT</span>':''}<div class="mut">${rp(m.p)} × ${bc[m.id]}</div></div>${stp(m,bc)}</div>`).join('')||'<p class="mut">Keranjang masih kosong.</p><button class="btn pr" data-go="menu">Pilih Menu</button>'}<p class="mut">${esc(msg)}</p></div>`;
   if(ci.length)h+=form+`<div class="card"><div class="row"><select id="bm"><option value="cash" ${bmeth==='cash'?'selected':''}>Bayar Cash</option><option value="qris" ${bmeth==='qris'?'selected':''}>Bayar QRIS</option></select></div>${qr}<div style="margin-top:10px"><label class="mut">Upload bukti pembayaran QRIS (opsional)</label><input type="file" id="bf" accept="image/*"><div class="mut">${proofFile?'📎 '+esc(proofFile.name):''}</div></div><p><b>Total: ${rp(cartTotal(bc))}</b></p><button class="btn pr" id="bgo" ${o?'':'disabled'}>Pesan Sekarang</button></div>`}
  else{h=`<div class="card" style="text-align:center">${tema.logo?`<img src="${tema.logo}" alt="Logo toko" style="width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--ln)">`:'<div style="font-size:48px">🏪</div>'}<h2 style="margin-top:8px">${esc(store.name)}</h2>${store.tagline?`<p class="mut">${esc(store.tagline)}</p>`:''}${store.desc?`<p>${esc(store.desc)}</p>`:''}<p class="mut">Jam buka ${store.open}–${store.close} · ${o?'Sedang BUKA':'Sedang TUTUP'}</p>${store.addr?`<p class="mut">📍 ${esc(store.addr)}</p>`:''}${wanum(store.wa)?`<p><a class="btn pr" target="_blank" rel="noopener" href="https://wa.me/${wanum(store.wa)}">💬 Chat WhatsApp Toko</a></p>`:''}<p class="mut">Pesan lewat HP, lalu ambil dan bayar di toko (cash atau QRIS).</p></div>${form}${store.qris?`<div class="card" style="text-align:center"><h2>QRIS Toko</h2><img src="${store.qris}" alt="QRIS toko" style="max-width:240px;width:100%;border-radius:12px"></div>`:''}`}
- el.innerHTML=h;bindB()}
+ if(bpage!=='cart'&&bpage!=='profil'&&cnt(bc))h+=`<button class="cartbar" data-go="cart"><span>🛒 ${cnt(bc)} item</span><b>${rp(cartTotal(bc))} ›</b></button>`;el.innerHTML=h;bindB()}
 function bindB(){const el=$('#buyer'),on=(s,k,f)=>{const e=$(s);if(e)e[k]=f};
  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
  el.querySelectorAll('[data-a=b]').forEach(b=>b.onclick=()=>{bc[b.dataset.i]=Math.max(0,(bc[b.dataset.i]||0)+ +b.dataset.d);buyerUI()});
