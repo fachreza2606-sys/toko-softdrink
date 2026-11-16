@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ===== TEMA: gelap ala aplikasi modern (mengikuti La-Tansa) ===== */
+html:root:not([data-theme="x"]){
+  --bg:#0A0A0B;--card:#151517;--tx:#F5F2EF;--mut:#9A948F;--ln:#26262A;
+  --pr:#FF4D5E;--prt:#fff;--bad:#FF7B7B;--ok:#3ECF9F;--glow:rgba(255,77,94,.35);
+  color-scheme:dark}
+body{
+  font-family:'Plus Jakarta Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background-color:var(--bg);
+  background-image:radial-gradient(600px 320px at 85% -60px,rgba(255,77,94,.18),transparent),
+                   radial-gradient(500px 300px at -10% 25%,rgba(255,170,60,.07),transparent);
+  background-repeat:no-repeat;-webkit-font-smoothing:antialiased}
+main{padding:0 14px 130px}
+h1{font-size:20px;font-weight:800;letter-spacing:-.3px}
+h2{font-size:16px;font-weight:700;letter-spacing:-.2px}
+
+/* header lengket + status */
+.top{position:sticky;top:0;z-index:6;margin:0 -14px 12px;padding:14px;
+  background:color-mix(in srgb,var(--bg) 78%,transparent);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--ln)}
+.badge{border-radius:99px;padding:3px 10px;font-weight:600;background:color-mix(in srgb,var(--card) 90%,transparent)}
+.badge.open{background:rgba(62,207,159,.12)}.badge.closed{background:rgba(255,123,123,.12)}
+
+/* tab Pesan / Kasir jadi segmented */
+.tabs{display:flex;gap:4px;padding:4px;background:var(--card);border:1px solid var(--ln);border-radius:99px;margin-bottom:14px}
+.tab{flex:1;border:0;background:transparent;border-radius:99px;font-weight:600;color:var(--mut);padding:10px 14px;transition:.2s}
+.tab.on{background:var(--pr);color:var(--prt);box-shadow:0 6px 18px var(--glow)}
+
+/* tombol & input */
+.btn{border-radius:99px;font-weight:600;transition:transform .12s,box-shadow .2s,background .2s}
+.btn:active{transform:scale(.96)}
+.btn.pr{background:linear-gradient(135deg,#FF6B78,#E5233A);border-color:transparent;box-shadow:0 8px 22px var(--glow)}
+input,select,textarea{border-radius:14px;background:#0F0F11;border:1px solid var(--ln);transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--pr);box-shadow:0 0 0 3px rgba(255,77,94,.2)}
+
+/* kartu */
+.card,.stat,.mc{background:var(--card);border:1px solid var(--ln);border-radius:20px}
+.card{padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.stat{padding:12px 14px}.stat b{font-size:20px;font-weight:800}
+.banner{border-radius:16px;font-weight:500}
+.banner.open{background:rgba(62,207,159,.1)}.banner.closed{background:rgba(255,123,123,.1)}
+
+/* hero beranda */
+.hero{position:relative;overflow:hidden;border-radius:28px;padding:26px 20px;
+  background:linear-gradient(145deg,#2A0E13 0%,#12070A 55%,#0A0A0B 100%);
+  border:1px solid rgba(255,77,94,.25);box-shadow:0 20px 50px rgba(255,77,94,.12)}
+.hero::before{content:"";position:absolute;right:-70px;top:-70px;width:240px;height:240px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,77,94,.55),transparent 70%);filter:blur(10px)}
+.hero>*{position:relative}
+.ht{font-size:32px;font-weight:800;letter-spacing:-.8px}
+.hb{background:var(--pr);color:#fff;border-color:var(--pr);box-shadow:0 8px 22px var(--glow)}
+.hb.g{background:rgba(255,255,255,.06);color:#fff;border-color:rgba(255,255,255,.25)}
+
+/* kartu menu: foto penuh + tombol bulat */
+.mg{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.mc{padding:0 0 14px;gap:4px;overflow:hidden;transition:transform .2s,border-color .2s}
+.mc:hover{transform:translateY(-3px);border-color:rgba(255,77,94,.5)}
+.mc>b,.mc>.mut{margin:0 14px}
+.mc>b{font-weight:700;margin-top:6px}
+.mc>.mut{color:var(--pr);font-weight:700}
+.mi{height:116px;border-radius:0;margin:0}
+.em{width:100%;height:116px;display:grid;place-items:center;font-size:44px;
+  background:radial-gradient(circle at 30% 20%,rgba(255,77,94,.25),rgba(255,255,255,.02))}
+.mc .qty{width:calc(100% - 28px);margin:8px 14px 0;justify-content:space-between}
+.qty .btn.sm{width:34px;height:34px;padding:0;border-radius:50%;font-size:18px;line-height:1;display:grid;place-items:center}
+.qty .btn.sm[data-d="1"]{background:var(--pr);color:#fff;border-color:var(--pr);box-shadow:0 4px 12px var(--glow)}
+.qty .btn.sm[disabled]{background:var(--card);box-shadow:none;color:var(--mut);border-color:var(--ln)}
+.mc.so{opacity:.5}
+.sob{background:var(--bad);color:#1a0505}
+
+/* navigasi bawah melayang */
+#nav{left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));width:calc(100% - 24px);max-width:480px;
+  border:1px solid var(--ln);border-radius:26px;padding:6px;
+  background:color-mix(in srgb,var(--card) 82%,transparent);
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+  box-shadow:0 14px 40px rgba(0,0,0,.55)}
+.nb{border-radius:20px;padding:7px 4px;transition:.2s}
+.nb.on{background:rgba(255,77,94,.14);color:var(--pr)}
+.nb i{background:var(--pr);color:#fff}
+
+/* bar keranjang melayang di atas navigasi */
+.cartbar{position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(84px + env(safe-area-inset-bottom,0px));width:calc(100% - 28px);max-width:452px;z-index:6;
+  display:flex;justify-content:space-between;align-items:center;border:0;cursor:pointer;
+  background:linear-gradient(135deg,#FF6B78,#E5233A);color:#fff;font:inherit;font-weight:700;
+  padding:14px 20px;border-radius:99px;box-shadow:0 12px 30px var(--glow);animation:pop .25s both}
+@keyframes pop{from{opacity:0;transform:translate(-50%,12px)}}
+
+/* menu kasir (pill bisa digeser) */
+.sub{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.sub::-webkit-scrollbar{display:none}.sub .btn{white-space:nowrap}
+table{font-size:13.5px}th{color:var(--mut);font-weight:600}
+
+/* animasi masuk bertahap */
+#buyer>*{animation:up .4s cubic-bezier(.2,.7,.2,1) both}
+#buyer>*:nth-child(2){animation-delay:.05s}#buyer>*:nth-child(3){animation-delay:.1s}
+#buyer>*:nth-child(4){animation-delay:.15s}#buyer>*:nth-child(5){animation-delay:.2s}
+
+/* splash */
+#splash{background:radial-gradient(circle at 50% 35%,#3A0F16 0%,#0A0A0B 70%)}
+#splash .es{filter:drop-shadow(0 8px 20px var(--glow))}
