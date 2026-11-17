@@ -391,4 +391,4 @@ buyerUI();paintStatus();
  db.doc('menu/main').onSnapshot(s=>{menu=s.exists?(s.data().items||[]):[];buyerUI();if(unlocked){if(sub==='sale')saleUI();else if(sub==='set')setUI()}});
 }catch(e){buyerUI()}})();
 if(sessionStorage.getItem('k')){sessionStorage.removeItem('k');const iv=setInterval(()=>{if(db){clearInterval(iv);document.querySelector('[data-t=kasir]').click()}},200)}
-</script></body></html>
+</script><script src="extras.js" defer></script></body></html>
